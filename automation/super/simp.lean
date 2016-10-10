@@ -8,12 +8,7 @@ tgt ← target,
 ass ← mk_local_def `h tgt,
 exact ass
 
-meta def simplify_capturing_assumptions (type : expr) : tactic (expr × expr × list expr) := do
-(type', heq) ← simplify prove_using_assumption [] type,
-hyps ← return $ contained_lconsts type,
-hyps' ← return $ contained_lconsts_list [type', heq],
-add_hyps ← return $ list.filter (λn : expr, ¬hyps↣contains n↣local_uniq_name) hyps'↣values,
-return (type', heq, add_hyps)
+variable simplify_capturing_assumptions (type : expr) : tactic (expr × expr × list expr)
 
 meta def try_simplify_left (c : clause) (i : ℕ) : tactic (list clause) :=
 on_left_at c i $ λtype, do
@@ -30,9 +25,16 @@ on_right_at' c i $ λhyp, do
   prf  ← mk_app ``eq.mpr [heqsymm, hyp],
   return [(add_hyps, prf)]
 
+meta def simplify_capturing_assumptions (type : expr) : tactic (expr × expr × list expr) := do
+(type', heq) ← simplify prove_using_assumption [] type,
+hyps ← return $ contained_lconsts type,
+hyps' ← return $ contained_lconsts_list [type', heq],
+add_hyps ← return $ list.filter (λn : expr, ¬hyps↣contains n↣local_uniq_name) hyps'↣values,
+return (type', heq, add_hyps)
+
 meta def simp_inf : inference := take given, sequence' $ do
 r ← [try_simplify_right, try_simplify_left],
 i ← list.range given↣c↣num_lits,
-[inf_if_successful 2 given (r given↣c i)]
+[inf_if_successful 2 given (r simplify_capturing_assumptions given↣c i)]
 
 end super
